@@ -235,6 +235,7 @@ split_df_test_train <- function(df, prc_train, prc_test, prc_other = 0) {
 # get each frequency mean
 df_col_means <- function(df) {
   n <- nrow(df)
+  ans <- c()
   
   for (col in 1:ncol(df)){
     ts <- df[[col]]
@@ -248,6 +249,7 @@ mean_center_df <- function(df) {
   means <- df_col_means(df)
   ts_centered <- c()
   colname <- colnames(df)
+  ans <- c()
   
   for(col in 1:ncol(df)){
     for (datapoint in 1:nrow(df)){
@@ -310,17 +312,56 @@ do_pca_reconstr <- function(df_train, df_all, n_comps){
   return(ans)
 }
 
+really_stupid_conversion_function <- function(df){
+  ans <- data.frame(matrix(ncol=0, nrow = nrow(df)))
+  
+  for (col in 1:ncol(df)){
+    temp_col <- df[col]
+    temp_col <- unlist(temp_col)
+    temp_col <- as.data.frame(temp_col)
+    
+    ans <- cbind(ans, temp_col)
+  }
+  colnames(ans) <- c("f1", "f2", "f3", "f4", "f5", "f6")
+  return(ans)
+}
+
 get_ERMS <- function(f_all, n_comps, train_prc = 70) {
   df_split <- split_df_test_train(f_all, prc_train = 70, prc_test = (100 - train_prc))
   df_all <- df_split[[1]]
   df_train <- df_split[[2]]
+  
+  centered_original_df <- mean_center_df(df_all)
+  centered_original_df <- really_stupid_conversion_function(centered_original_df)
+  print(str(centered_original_df))
   centered_reconstr_pca_df <- do_pca_reconstr(df_train = df_train, df_all = df_all, n_comps = n_comps)
+  print(str(centered_original_df))
+  print(str(centered_reconstr_pca_df))
   res <- centered_reconstr_pca_df - centered_original_df
   res_2 <- res^2
+  
+  
   
   ERMS <- (rowSums(res_2) / ncol(f_all))^(1/2)
   return(ERMS)
 }
+
+f_all_train_test <- split_df_test_train(freq_no_na, 70, 30)
+f_all <- as.data.frame(f_all_train_test[[1]])
+f_train <- as.data.frame(f_all_train_test[[2]])
+f_test <- as.data.frame(f_all_train_test[[3]])
+
+freq_means <- df_col_means(f_all)
+freq_means_train <- df_col_means(f_train)
+freq_means_test <- df_col_means(f_test)
+
+f_all_centered <- mean_center_df(f_all)
+f_train_centered <- mean_center_df(f_train)
+f_test_centered <- mean_center_df(f_test)
+
+
+temp <- get_ERMS(freq_no_na, 5, 70)
+ts.plot(temp)
 
 get_all_ERMS <- function(f_all_df_list, n_comps_vec, train_prc){
   
