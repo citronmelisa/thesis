@@ -187,7 +187,7 @@ get_ts_with_noise <- function(ts_df, noise_level){
 }
 
 noise_sd_level <- c(0, 10^-4, 10^-3, 10^-2, 10^-1)
-prc_damage_coef <- c(0.005, 0.01, 0.02, 0.03, 0.05, 0.1)
+prc_damage_coef <- c(0.001, 0.005, 0.01, 0.02, 0.05)
 data_mean <- c(
   mean(freq_no_na$f1),
   mean(freq_no_na$f2),
@@ -210,6 +210,7 @@ damage_coef <- as.data.frame(cbind(damage_coef_f1,
 
 all_damage_ts <- cbind(get_ts_with_damage('linear', damage_coef, freq_no_na), 
                        get_ts_with_damage('cubic', damage_coef, freq_no_na))
+ts.plot(all_damage_noise_ts[3])
 
 all_damage_noise_ts <- get_ts_with_noise(all_damage_ts, noise_sd_level)
 
@@ -276,6 +277,7 @@ get_eigens <- function(covd_matrix){
 get_total_variance_by_cols <- function(matrix){
   Y <- as.data.frame(matrix)
   col_sd <- c()
+  ans <- c()
   
   for(col in 1:ncol(Y)){
     col_sd[col] <- (sd(Y[,col]))^2
@@ -287,6 +289,7 @@ get_total_variance_by_cols <- function(matrix){
 get_variance_by_cols <- function(matrix){
   Y <- as.data.frame(matrix)
   col_sd <- c()
+  ans <- c()
   
   for(col in 1:ncol(Y)){
     ans[col] <- (sd(Y[,col]))^2
@@ -341,6 +344,8 @@ get_ERMS <- function(f_all, n_comps, train_prc = 70) {
   ERMS <- (rowSums(res_2) / ncol(f_all))^(1/2)
   return(ERMS)
 }
+ts.plot(get_ERMS(data_list[[45]], 2, 70))
+
 
 f_all_train_test <- split_df_test_train(freq_no_na, 70, 30)
 f_all <- as.data.frame(f_all_train_test[[1]])
@@ -397,9 +402,32 @@ get_all_ERMS <- function(f_all_df_list, n_comps_vec, train_prc){
 
 #temp <- get_all_ERMS(test_list, 1, 70)
 all_erms_df <- get_all_ERMS(data_list, comps_considered, 70)
+ts.plot(all_erms_df[4])
 
-
+ts.plot(all_erms_df[])
+test <- get_all_ERMS(data_list, 6, 70)
+ts.plot(test[,])
+# 70% train ---> 3278
+#3278+1 - 4199 ņem sd 
+#cp 4200
 
 # find change points from PCA ----
+#treshold_data_start <- nrow(f_train) + 1
+#treshold_data_end <- treshold_data_start  + (nrow(f_all) - 4200)
+#data_for_threshold <- all_erms_df[treshold_data_start:treshold_data_end, ]
 
+data_for_threshold <- all_erms_df[1:4200, ]
+
+get_tresholds <- function(treshold_data_df){
+  ans <- as.data.frame(matrix(nrow = 1, ncol = 0))
+  for (col in 1:ncol(treshold_data_df)){
+    sd <- sd(treshold_data_df[[col]])
+    ans <- cbind(ans, sd)
+  }
+return(ans)
+}
+
+temps <- get_tresholds(data_for_threshold)
+ts.plot(all_erms_df[104])
+abline(h = 3*temps[104])
 
