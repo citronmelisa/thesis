@@ -214,7 +214,6 @@ all_damage_ts <- cbind(get_ts_with_damage('linear', damage_coef, freq_no_na),
 all_damage_noise_ts <- get_ts_with_noise(all_damage_ts, noise_sd_level)
 
 data_list <- split.default(all_damage_noise_ts, rep(1:60, each = 6))
-
 # Do PCA on all data to get ERMS ----
 split_df_test_train <- function(df, prc_train, prc_test, prc_other = 0) {
   f_all <- df
@@ -333,10 +332,7 @@ get_ERMS <- function(f_all, n_comps, train_prc = 70) {
   
   centered_original_df <- mean_center_df(df_all)
   centered_original_df <- really_stupid_conversion_function(centered_original_df)
-  print(str(centered_original_df))
   centered_reconstr_pca_df <- do_pca_reconstr(df_train = df_train, df_all = df_all, n_comps = n_comps)
-  print(str(centered_original_df))
-  print(str(centered_reconstr_pca_df))
   res <- centered_reconstr_pca_df - centered_original_df
   res_2 <- res^2
   
@@ -359,12 +355,51 @@ f_all_centered <- mean_center_df(f_all)
 f_train_centered <- mean_center_df(f_train)
 f_test_centered <- mean_center_df(f_test)
 
+# temp <- get_ERMS(freq_no_na, 4, 70)
+# ts.plot(temp)
 
-temp <- get_ERMS(freq_no_na, 5, 70)
-ts.plot(temp)
+comps_considered <- c(2, 3, 4, 5)
+
+remotes::install_github("walkerke/tidycensus")
+library(tidyverse)
+library(tidycensus)
+table_names <- melt(colnames(all_damage_noise_ts))
+table_names <- table_names %>% 
+  mutate(df_group = gsub(" ", "", substr(value, 5, length(value)), fixed = T)) %>% 
+  group_by(df_group) %>% 
+  slice(1) %>% 
+  select(df_group)
+
+table_names <- pull(table_names, df_group)
+names(data_list) <- table_names
+
+test_list <- data_list[1:4]
 
 get_all_ERMS <- function(f_all_df_list, n_comps_vec, train_prc){
+  start_time <- Sys.time()
+  ans <- as.data.frame(matrix(nrow = nrow(f_all_df_list[[1]]), ncol = 0))
   
+  for (df in 1:length(f_all_df_list)){
+    data <- f_all_df_list[[df]]
+    
+    for(comp in n_comps_vec){
+      erms <- get_ERMS(data, comp, train_prc)
+      name <- paste("erms" ,names(f_all_df_list[df]), "_comp", comp)
+      #names(erms) <- name
+      ans <- cbind(ans, erms)
+      names(ans)[names(ans) == 'erms'] <- name
+    }
+  }
+  end_time <- Sys.time()
+  print(end_time - start_time)
+  return(ans)
 }
+
+#temp <- get_all_ERMS(test_list, 1, 70)
+all_erms_df <- get_all_ERMS(data_list, comps_considered, 70)
+
+
+
+# find change points from PCA ----
 
 
