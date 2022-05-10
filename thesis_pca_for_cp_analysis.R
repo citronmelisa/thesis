@@ -137,7 +137,7 @@ get_ts_with_damage <-
     colname <- c()
     
     if (damage_type == 'cubic') {
-      for (row in 1:length(ts_df)) {
+      for (row in 1:nrow(damage_coef)) {
         #Looping thru f1-f6
         for (col in 1:ncol(ts_df)) {
           #looping thru dam coefs
@@ -152,7 +152,7 @@ get_ts_with_damage <-
       }
       colnames(ans) <- colname
     } else if (damage_type == 'linear') {
-      for (row in 1:length(ts_df)) {
+      for (row in 1:nrow(damage_coef)) {
         #Looping thru f1-f6
         for (col in 1:ncol(ts_df)) {
           #looping thru dam coefs
@@ -168,6 +168,13 @@ get_ts_with_damage <-
     }
     return(ans)
   }
+
+# temp <- as.data.frame(matrix(ncol = 0, nrow = 4683))
+# temp <- cbind(temp, rep(0, 4683))
+# temp <- get_ts_with_damage("cubic", damage_coef, freq_no_na, offset = 4200)
+# ts.plot(get_ts_with_damage("linear", 0.1, temp, offset = 4200))
+# temp2 <- get_ts_with_damage("linear", 0.1, temp, offset = 4200)
+
 
 get_ts_with_noise <- function(ts_df, noise_level){
   ans <- data.frame(matrix(ncol = 0, nrow = nrow(ts_df)))  
@@ -185,6 +192,9 @@ get_ts_with_noise <- function(ts_df, noise_level){
   colnames(ans) <- colname
   return(ans)
 }
+# temp <- as.data.frame(matrix(ncol = 0, nrow = 4683))
+# temp <- cbind(temp, rep(0, 4683))
+# temp2 <- (get_ts_with_noise(temp, 0.01))
 
 noise_sd_level <- c(0, 10^-4, 10^-3, 10^-2, 10^-1)
 prc_damage_coef <- c(0.001, 0.005, 0.01, 0.02, 0.05)
@@ -210,7 +220,8 @@ damage_coef <- as.data.frame(cbind(damage_coef_f1,
 
 all_damage_ts <- cbind(get_ts_with_damage('linear', damage_coef, freq_no_na), 
                        get_ts_with_damage('cubic', damage_coef, freq_no_na))
-ts.plot(all_damage_noise_ts[3])
+# ts.plot(all_damage_ts[31])
+# ts.plot(all_damage_noise_ts[3])
 
 all_damage_noise_ts <- get_ts_with_noise(all_damage_ts, noise_sd_level)
 
@@ -412,22 +423,73 @@ ts.plot(test[,])
 #cp 4200
 
 # find change points from PCA ----
-#treshold_data_start <- nrow(f_train) + 1
-#treshold_data_end <- treshold_data_start  + (nrow(f_all) - 4200)
+treshold_data_start <- nrow(f_train) + 1
+treshold_data_end <- treshold_data_start  + (nrow(f_all) - 4200)
 #data_for_threshold <- all_erms_df[treshold_data_start:treshold_data_end, ]
 
-data_for_threshold <- all_erms_df[1:4200, ]
+data_for_threshold <- all_erms_df[treshold_data_start:treshold_data_end, ]
 
 get_tresholds <- function(treshold_data_df){
   ans <- as.data.frame(matrix(nrow = 1, ncol = 0))
   for (col in 1:ncol(treshold_data_df)){
-    sd <- sd(treshold_data_df[[col]])
-    ans <- cbind(ans, sd)
+    sd <- 3 * sd(treshold_data_df[[col]])
+    mean <- mean(treshold_data_df[[col]])
+    tres <- sd + mean
+    ans <- cbind(ans, tres)
   }
 return(ans)
 }
 
-temps <- get_tresholds(data_for_threshold)
+tresholds <- get_tresholds(data_for_threshold)
 ts.plot(all_erms_df[104])
 abline(h = 3*temps[104])
 
+get_erms_metadata <- function(erms_df_column){
+  metadata_raw <- colnames(erms_df_column)
+  metadata <- gsub(" ", "", metadata_raw)
+  
+  ans_raw <- unlist(str_split(metadata, "_", 7))
+  
+  return(ans_raw)
+}
+
+metadata <- as.data.frame(matrix(nrow = length(all_erms_df), ncol = 0))
+metadata <- cbind(1:length(all_erms_df),names(all_erms_df))
+colnames(metadata) <- c("df_num","metadata")
+metadata <- as.data.frame(metadata)
+
+metadata <- metadata %>% 
+  mutate(damage = substr(metadata, 11, 11),
+         damage_type = ifelse(grepl("cubic", metadata, fixed = T), "cubic", "linear"),
+         noise = ifelse(grepl("cubic", metadata, fixed = T), substr(metadata, 25, 25), substr(metadata, 26, 26)),
+         n_comp = 
+           ifelse(grepl("cubic", metadata, fixed = T), substr(metadata, 33, 33), substr(metadata, 34, 34)))
+
+par(mfrow = c(4, 1))
+
+ts.plot(all_erms_df[1])
+abline(h = tresholds[1], col='red')
+ts.plot(all_erms_df[2])
+abline(h = tresholds[2], col='red')
+ts.plot(all_erms_df[3])
+abline(h = tresholds[3], col='red')
+ts.plot(all_erms_df[4])
+abline(h = tresholds[4], col='red')
+
+ts.plot(all_erms_df[173])
+abline(h = tresholds[173], col='red')
+ts.plot(all_erms_df[174])
+abline(h = tresholds[174], col='red')
+ts.plot(all_erms_df[175])
+abline(h = tresholds[175], col='red')
+ts.plot(all_erms_df[176])
+abline(h = tresholds[176], col='red')
+
+ts.plot(all_erms_df[177])
+abline(h = tresholds[177], col='red')
+ts.plot(all_erms_df[178])
+abline(h = tresholds[178], col='red')
+ts.plot(all_erms_df[179])
+abline(h = tresholds[179], col='red')
+ts.plot(all_erms_df[180])
+abline(h = tresholds[180], col='red')
