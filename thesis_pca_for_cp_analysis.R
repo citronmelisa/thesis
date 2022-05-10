@@ -427,18 +427,22 @@ treshold_data_start <- nrow(f_train) + 1
 treshold_data_end <- treshold_data_start  + (nrow(f_all) - 4200)
 #data_for_threshold <- all_erms_df[treshold_data_start:treshold_data_end, ]
 
-data_for_threshold <- all_erms_df[treshold_data_start:treshold_data_end, ]
+data_for_threshold <- all_erms_df[1:3000]#[treshold_data_start:treshold_data_end, ]
 
 get_tresholds <- function(treshold_data_df){
   ans <- as.data.frame(matrix(nrow = 1, ncol = 0))
   for (col in 1:ncol(treshold_data_df)){
-    sd <- 3 * sd(treshold_data_df[[col]])
+    sd <- 3 * stats::mad(treshold_data_df[[col]])
     mean <- mean(treshold_data_df[[col]])
     tres <- sd + mean
     ans <- cbind(ans, tres)
   }
 return(ans)
 }
+
+ts.plot(all_damage_noise_ts[4])
+abline(v = 4200, col = 'red')
+
 
 tresholds <- get_tresholds(data_for_threshold)
 ts.plot(all_erms_df[104])
@@ -467,14 +471,19 @@ metadata <- metadata %>%
 
 par(mfrow = c(4, 1))
 
-ts.plot(all_erms_df[1])
-abline(h = tresholds[1], col='red')
-ts.plot(all_erms_df[2])
-abline(h = tresholds[2], col='red')
-ts.plot(all_erms_df[3])
-abline(h = tresholds[3], col='red')
-ts.plot(all_erms_df[4])
-abline(h = tresholds[4], col='red')
+ts.plot(all_damage_noise_ts)
+
+
+openxlsx::write.xlsx(all_erms_df, "all_erms.xlsx")
+
+ts.plot(all_erms_df[7])
+abline(h = tresholds[7], col='red')
+ts.plot(all_erms_df[8])
+abline(h = tresholds[8], col='red')
+ts.plot(all_erms_df[9])
+abline(h = tresholds[9], col='red')
+ts.plot(all_erms_df[10])
+abline(h = tresholds[10], col='red')
 
 ts.plot(all_erms_df[173])
 abline(h = tresholds[173], col='red')
