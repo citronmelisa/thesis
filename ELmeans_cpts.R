@@ -6,6 +6,7 @@ library(dplyr)
 library(ggplot2)
 library(xts)
 library(reshape2)
+library(EL)
 
 # funcs for data reading and tidying ----
 get_modal_ts <- function(data) {
@@ -62,10 +63,55 @@ freq_no_na <- freq_no_na %>%
   mutate(t = time) %>% 
   select(f1, f2, f3, f4, f5, f6)
 
-install.packages("EL")
-library(EL)
-
 temp1 <- c(1:8)
 temp2 <- c(3:19)
 
 EL.means(temp1, temp2)
+
+
+# getting samples X and Y, and pvalues for el.means test
+
+split_to_equal_windows <- function(windowsize, ts){
+  n <- length(ts)
+  sample_nr <- 1
+  ans <- list()
+  
+  
+  for (i in 1:(n - 2*windowsize - 1)){
+    X <- ts[i:(i+windowsize)]
+    Y <- ts[(i+windowsize+1):(i + 2 * windowsize + 1)]
+    samples <- as.data.frame(cbind(X, Y))
+    ans[[sample_nr]] <- samples
+    sample_nr = sample_nr + 1
+  }
+return(ans)
+}
+acf(erms_all_data[[3]])
+ts.plot(erms_all_data[[3]])
+par(mfrow = c(6, 1))
+ts.plot(freq_no_na[[6]])
+
+temp <- split_to_equal_windows(24*7*2, erms_all_data$`erms _dam_1_cubic_noise_1 _comp 2`)
+
+get_elmeans_pvals <- function(list_of_sampledfs){
+  time <- Sys.Date()
+  pvals <- c()
+  for (sample in 1:length(list_of_sampledfs)){
+    all_res <- EL.means(list_of_sampledfs[[sample]][[1]], list_of_sampledfs[[sample]][[2]])
+    pvals <- c(pvals, all_res$p.value)
+  }
+  return(pvals)
+  print(Sys.Date()-time)
+}
+
+temp2 <- get_elmeans_pvals(temp)
+par(mfrow = c(1, 1))
+
+ts.plot(temp2)
+abline(h = 0.05, col = 'blue')
+
+split_in_two <- function(minimal_sample, ts){
+  
+  
+}
+
