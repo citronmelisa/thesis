@@ -132,6 +132,7 @@ add_damage <- function(ts, damage_coef, damage_type, offset) {
   }
 }
 
+
 get_ts_with_damage <-
   function(damage_type, damage_coef, ts_df, offset = 4200) {
     len <- nrow(ts_df)
@@ -209,11 +210,11 @@ data_mean <- c(
   mean(freq_no_na$f5),
   mean(freq_no_na$f6))
 damage_coef_f1 <- prc_damage_coef * data_mean[1]
-damage_coef_f2 <- prc_damage_coef * data_mean[2]
+damage_coef_f2 <- rep(0, length(prc_damage_coef))
 damage_coef_f3 <- prc_damage_coef * data_mean[3]
-damage_coef_f4 <- prc_damage_coef * data_mean[4]
-damage_coef_f5 <- prc_damage_coef * data_mean[5]
-damage_coef_f6 <- prc_damage_coef * data_mean[6]
+damage_coef_f4 <- rep(0, length(prc_damage_coef))
+damage_coef_f5 <- rep(0, length(prc_damage_coef))
+damage_coef_f6 <- rep(0, length(prc_damage_coef))
 damage_coef <- as.data.frame(cbind(damage_coef_f1,
                                    damage_coef_f2,
                                    damage_coef_f3, 
@@ -502,8 +503,36 @@ for (erms in 1:length(all_erms_df)){
 
 
 # graphic playground ----
-library(ggplot2)
-library(reshape2)
+# Damage 1-6 on frequency f1 point 4200 linear
+ts.plot(all_damage_noise_ts[1])
+abline(v=4200)
+ts.plot(all_damage_noise_ts[7])
+abline(v=4200)
+ts.plot(all_damage_noise_ts[13])
+abline(v=4200)
+ts.plot(all_damage_noise_ts[19])
+abline(v=4200)
+ts.plot(all_damage_noise_ts[25])
+abline(v=4200)
+ts.plot(all_damage_noise_ts[31])
+abline(v=4200)
+
+# Damage 1-6 on frequency f1 point 4200 cubic
+ts.plot(all_damage_noise_ts$`f 1 _dam_ 1 _cubic _noise_ 1`)
+abline(v=4200)
+ts.plot(all_damage_noise_ts$`f 1 _dam_ 2 _cubic _noise_ 1`)
+abline(v=4200)
+ts.plot(all_damage_noise_ts$`f 1 _dam_ 3 _cubic _noise_ 1`)
+abline(v=4200)
+ts.plot(all_damage_noise_ts$`f 1 _dam_ 4 _cubic _noise_ 1`)
+abline(v=4200)
+ts.plot(all_damage_noise_ts$`f 1 _dam_ 5 _cubic _noise_ 1`)
+abline(v=4200)
+ts.plot(all_damage_noise_ts$`f 1 _dam_ 6 _cubic _noise_ 1`)
+abline(v=4200)
+
+
+
 str(all_erms_test)
 all_erms_test <- cbind(all_erms_df, time = c(1:nrow(all_erms_df)))
 temp <- cbind(all_erms_test[,1:4], time =c(1:nrow(all_erms_df)))
