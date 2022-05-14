@@ -360,19 +360,18 @@ get_ERMS <- function(f_all, n_comps, train_prc = 70) {
   df_all <- df_split[[1]]
   df_train <- df_split[[2]]
   
-  centered_original_df <- mean_center_df(freq_no_na)
+  centered_original_df <- mean_center_df(df_all)
   centered_original_df <- really_stupid_conversion_function(centered_original_df)
   centered_reconstr_pca_df <- do_pca_reconstr(df_train = df_train, df_all = df_all, n_comps = n_comps)
   res <- centered_reconstr_pca_df - centered_original_df
   res_2 <- res^2
   
-  
-  
   ERMS <- (rowSums(res_2) / ncol(f_all))^(1/2)
   return(ERMS)
 }
-#ts.plot(get_ERMS(data_list[[45]], 2, 70))
-
+# ts.plot(get_ERMS(test_list[[1]], 2, 70))
+# temp <- get_ERMS(test_list[[1]], 2, 70)
+# temp2 <- get_ERMS(test_list[[2]], 2, 70)
 
 
 
@@ -392,7 +391,7 @@ table_names <- table_names$df_group
 
 names(data_list) <- table_names
 
-#test_list <- data_list[1:4]
+test_list <- data_list[1:8]
 
 get_all_ERMS <- function(f_all_df_list, n_comps_vec, train_prc){
   start_time <- Sys.time()
@@ -434,7 +433,7 @@ treshold_data_start <- nrow(f_train) + 1
 treshold_data_end <- treshold_data_start  + (nrow(f_all) - 4200)
 #data_for_threshold <- all_erms_df[treshold_data_start:treshold_data_end, ]
 
-data_for_threshold <- all_erms_df[1:3000,]#[treshold_data_start:treshold_data_end, ]
+data_for_threshold <- all_erms[1:3000,]#[treshold_data_start:treshold_data_end, ]
 
 get_tresholds <- function(treshold_data_df){
   ans <- as.data.frame(matrix(nrow = 1, ncol = 0))
@@ -464,8 +463,8 @@ get_erms_metadata <- function(erms_df_column){
   return(ans_raw)
 }
 
-metadata <- as.data.frame(matrix(nrow = length(all_erms_df), ncol = 0))
-metadata <- cbind(1:length(all_erms_df),names(all_erms_df))
+metadata <- as.data.frame(matrix(nrow = length(all_erms), ncol = 0))
+metadata <- cbind(1:length(all_erms),names(all_erms))
 colnames(metadata) <- c("df_num","meta")
 metadata <- as.data.frame(metadata)
 
@@ -485,7 +484,7 @@ openxlsx::write.xlsx(all_damage_noise_ts, "all_data_w_damage_noise")
 # plot ERMS for all data by number of components ----
 par(mfrow=c(4, 1))
 Sys.setlocale("LC_ALL", "latvian_Latvia.1257")
-for (erms in 1:length(all_erms_df)){
+for (erms in 1:length(all_erms)){
   jpeg(filename = paste(erms, "_damage"  ,
                         metadata[erms,]$damage,
                         metadata[erms,]$damage_type,
@@ -496,12 +495,12 @@ for (erms in 1:length(all_erms_df)){
                      ", trokšņa tips: ", metadata[erms,]$noise,
                      ", ņemot vērā " , metadata[erms,]$n_comp, " komponentes.",
                      sep = "")
-  ts.plot(all_erms_df[[erms]], main = plot_name, ylab = "Hz", xlab = "laiks")
+  ts.plot(all_erms[[erms]], main = plot_name, ylab = "Hz", xlab = "laiks")
   abline(h = tresholds[erms], col='red')
   dev.off()
 }
 
-
+Hmisc::describe(all_erms)
 
 # graphic playground ----
 library(ggplot2)
