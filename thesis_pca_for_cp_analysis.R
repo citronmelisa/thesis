@@ -7,6 +7,8 @@ library(dplyr)
 library(ggplot2)
 library(xts)
 library(reshape2)
+library(tidyverse)
+library(tidycensus)
 
 # funcs for data reading and tidying ----
 get_modal_ts <- function(data) {
@@ -197,7 +199,8 @@ get_ts_with_noise <- function(ts_df, noise_level){
 # temp2 <- (get_ts_with_noise(temp, 0.01))
 
 noise_sd_level <- c(0, 10^-4, 10^-3, 10^-2, 10^-1)
-prc_damage_coef <- c(0.001, 0.005, 0.01, 0.02, 0.05)
+prc_damage_coef <- c(0.001, 0.005, 0.01, 0.02, 0.03, 0.05)
+
 data_mean <- c(
   mean(freq_no_na$f1),
   mean(freq_no_na$f2),
@@ -339,25 +342,6 @@ really_stupid_conversion_function <- function(df){
   return(ans)
 }
 
-get_ERMS <- function(f_all, n_comps, train_prc = 70) {
-  df_split <- split_df_test_train(f_all, prc_train = 70, prc_test = (100 - train_prc))
-  df_all <- df_split[[1]]
-  df_train <- df_split[[2]]
-  
-  centered_original_df <- mean_center_df(df_all)
-  centered_original_df <- really_stupid_conversion_function(centered_original_df)
-  centered_reconstr_pca_df <- do_pca_reconstr(df_train = df_train, df_all = df_all, n_comps = n_comps)
-  res <- centered_reconstr_pca_df - centered_original_df
-  res_2 <- res^2
-  
-  
-  
-  ERMS <- (rowSums(res_2) / ncol(f_all))^(1/2)
-  return(ERMS)
-}
-ts.plot(get_ERMS(data_list[[45]], 2, 70))
-
-
 f_all_train_test <- split_df_test_train(freq_no_na, 70, 30)
 f_all <- as.data.frame(f_all_train_test[[1]])
 f_train <- as.data.frame(f_all_train_test[[2]])
@@ -371,25 +355,44 @@ f_all_centered <- mean_center_df(f_all)
 f_train_centered <- mean_center_df(f_train)
 f_test_centered <- mean_center_df(f_test)
 
+get_ERMS <- function(f_all, n_comps, train_prc = 70) {
+  df_split <- split_df_test_train(f_all, prc_train = 70, prc_test = (100 - train_prc))
+  df_all <- df_split[[1]]
+  df_train <- df_split[[2]]
+  
+  centered_original_df <- mean_center_df(freq_no_na)
+  centered_original_df <- really_stupid_conversion_function(centered_original_df)
+  centered_reconstr_pca_df <- do_pca_reconstr(df_train = df_train, df_all = df_all, n_comps = n_comps)
+  res <- centered_reconstr_pca_df - centered_original_df
+  res_2 <- res^2
+  
+  
+  
+  ERMS <- (rowSums(res_2) / ncol(f_all))^(1/2)
+  return(ERMS)
+}
+#ts.plot(get_ERMS(data_list[[45]], 2, 70))
+
+
+
+
 # temp <- get_ERMS(freq_no_na, 4, 70)
 # ts.plot(temp)
 
 comps_considered <- c(2, 3, 4, 5)
 
-remotes::install_github("walkerke/tidycensus")
-library(tidyverse)
-library(tidycensus)
+
 table_names <- melt(colnames(all_damage_noise_ts))
 table_names <- table_names %>% 
   mutate(df_group = gsub(" ", "", substr(value, 5, length(value)), fixed = T)) %>% 
   group_by(df_group) %>% 
-  slice(1) %>% 
+  filter(row_number()==1) %>% 
   select(df_group)
+table_names <- table_names$df_group
 
-table_names <- pull(table_names, df_group)
 names(data_list) <- table_names
 
-test_list <- data_list[1:4]
+#test_list <- data_list[1:4]
 
 get_all_ERMS <- function(f_all_df_list, n_comps_vec, train_prc){
   start_time <- Sys.time()
@@ -411,13 +414,17 @@ get_all_ERMS <- function(f_all_df_list, n_comps_vec, train_prc){
   return(ans)
 }
 
-#temp <- get_all_ERMS(test_list, 1, 70)
+#temp <- data_list[1:2]
+#temp2 <- get_all_ERMS(temp, 1, 70)
+#all_erms_test <- get_all_ERMS(test_list, comps_considered, 70)
 all_erms_df <- get_all_ERMS(data_list, comps_considered, 70)
-ts.plot(all_erms_df[4])
+#Hmisc::describe(all_erms_df)
+#ts.plot(all_erms_df[4])
 
-ts.plot(all_erms_df[])
-test <- get_all_ERMS(data_list, 6, 70)
-ts.plot(test[,])
+
+#test <- get_all_ERMS(data_list, 6, 70)
+#ts.plot(test[,])
+
 # 70% train ---> 3278
 #3278+1 - 4199 ņem sd 
 #cp 4200
@@ -427,7 +434,7 @@ treshold_data_start <- nrow(f_train) + 1
 treshold_data_end <- treshold_data_start  + (nrow(f_all) - 4200)
 #data_for_threshold <- all_erms_df[treshold_data_start:treshold_data_end, ]
 
-data_for_threshold <- all_erms_df[1:3000]#[treshold_data_start:treshold_data_end, ]
+data_for_threshold <- all_erms_df[1:3000,]#[treshold_data_start:treshold_data_end, ]
 
 get_tresholds <- function(treshold_data_df){
   ans <- as.data.frame(matrix(nrow = 1, ncol = 0))
@@ -440,13 +447,13 @@ get_tresholds <- function(treshold_data_df){
 return(ans)
 }
 
-ts.plot(all_damage_noise_ts[4])
-abline(v = 4200, col = 'red')
+#ts.plot(all_damage_noise_ts[4])
+#abline(v = 4200, col = 'red')
 
 
 tresholds <- get_tresholds(data_for_threshold)
-ts.plot(all_erms_df[104])
-abline(h = 3*temps[104])
+#ts.plot(all_erms_df[104])
+#abline(h = 3*tresholds[104])
 
 get_erms_metadata <- function(erms_df_column){
   metadata_raw <- colnames(erms_df_column)
@@ -459,46 +466,71 @@ get_erms_metadata <- function(erms_df_column){
 
 metadata <- as.data.frame(matrix(nrow = length(all_erms_df), ncol = 0))
 metadata <- cbind(1:length(all_erms_df),names(all_erms_df))
-colnames(metadata) <- c("df_num","metadata")
+colnames(metadata) <- c("df_num","meta")
 metadata <- as.data.frame(metadata)
 
 metadata <- metadata %>% 
-  mutate(damage = substr(metadata, 11, 11),
-         damage_type = ifelse(grepl("cubic", metadata, fixed = T), "cubic", "linear"),
-         noise = ifelse(grepl("cubic", metadata, fixed = T), substr(metadata, 25, 25), substr(metadata, 26, 26)),
-         n_comp = 
-           ifelse(grepl("cubic", metadata, fixed = T), substr(metadata, 33, 33), substr(metadata, 34, 34)))
+  mutate(damage = substr(meta, 11, 11),
+         damage_type = ifelse(grepl("cubic", meta, fixed = T), substr(meta, 13, 17), substr(meta, 13, 18)),
+         noise = ifelse(grepl("cubic", meta, fixed = T), substr(meta, 25, 25), substr(meta, 26, 26)),
+         n_comp = ifelse(grepl("cubic", meta, fixed = T), substr(meta, 33, 33), substr(meta, 34, 34)))
+
 
 par(mfrow = c(4, 1))
-
-ts.plot(all_damage_noise_ts)
-
-
+# write data to excel ----
 openxlsx::write.xlsx(all_erms_df, "all_erms.xlsx")
+openxlsx::write.xlsx(freq_no_na, "original_data_no_missing.xlsx")
+openxlsx::write.xlsx(all_damage_noise_ts, "all_data_w_damage_noise")
 
-ts.plot(all_erms_df[7])
-abline(h = tresholds[7], col='red')
-ts.plot(all_erms_df[8])
-abline(h = tresholds[8], col='red')
-ts.plot(all_erms_df[9])
-abline(h = tresholds[9], col='red')
-ts.plot(all_erms_df[10])
-abline(h = tresholds[10], col='red')
+# plot ERMS for all data by number of components ----
+par(mfrow=c(4, 1))
+Sys.setlocale("LC_ALL", "latvian_Latvia.1257")
+for (erms in 1:length(all_erms_df)){
+  jpeg(filename = paste(erms, "_damage"  ,
+                        metadata[erms,]$damage,
+                        metadata[erms,]$damage_type,
+                        "noise", metadata[erms,]$noise,
+                        "n_comps", metadata[erms,]$n_comp, ".jpeg",
+                        sep=""))
+  plot_name <- paste("bojājuma tips ", metadata[erms,]$damage_type, ": ", metadata[erms,]$damage,
+                     ", trokšņa tips: ", metadata[erms,]$noise,
+                     ", ņemot vērā " , metadata[erms,]$n_comp, " komponentes.",
+                     sep = "")
+  ts.plot(all_erms_df[[erms]], main = plot_name, ylab = "Hz", xlab = "laiks")
+  abline(h = tresholds[erms], col='red')
+  dev.off()
+}
 
-ts.plot(all_erms_df[173])
-abline(h = tresholds[173], col='red')
-ts.plot(all_erms_df[174])
-abline(h = tresholds[174], col='red')
-ts.plot(all_erms_df[175])
-abline(h = tresholds[175], col='red')
-ts.plot(all_erms_df[176])
-abline(h = tresholds[176], col='red')
 
-ts.plot(all_erms_df[177])
-abline(h = tresholds[177], col='red')
-ts.plot(all_erms_df[178])
-abline(h = tresholds[178], col='red')
-ts.plot(all_erms_df[179])
-abline(h = tresholds[179], col='red')
-ts.plot(all_erms_df[180])
-abline(h = tresholds[180], col='red')
+
+# graphic playground ----
+library(ggplot2)
+library(reshape2)
+str(all_erms_test)
+all_erms_test <- cbind(all_erms_df, time = c(1:nrow(all_erms_df)))
+temp <- cbind(all_erms_test[,1:4], time =c(1:nrow(all_erms_df)))
+df_melt = melt(temp, id.vars = 'time')
+
+
+ggplot(df_melt, aes(x = time, y = value)) + 
+  geom_line() + 
+  facet_wrap(~ variable, scales = 'free_y', ncol = 1) +
+  geom_hline(yintercept = 0.1)
+
+
+all_damage_noise_test <- all_damage_noise_ts [,7:12]
+all_damage_noise_test <- cbind(all_damage_noise_test, time =c(1:nrow(all_damage_noise_test)))
+df_melt = melt(all_damage_noise_test, id.vars = 'time')
+ggplot(df_melt, aes(x = time, y = value)) + 
+  geom_line() + 
+  facet_wrap(~ variable, nrow = 3, scales = "free_y") +
+  geom_hline(yintercept = c(0.1))
+
+dput(df_melt)
+
+df_1 <- all_damage_noise_test[1:7,]
+df_2 <- df_melt[1:7,]                               
+dput(df_1)
+
+str(df_1)
+str(df_2)
