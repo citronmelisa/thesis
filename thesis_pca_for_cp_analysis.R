@@ -626,24 +626,184 @@ split_erms_results <- function(all_erms_df, tresholds, train_end, test_end) {
 
 erms_raw_stats <- split_erms_results(all_erms_df, tresholds, floor(0.7*nrow(all_erms_df)), 4200)
 ## TRANSPOSING TO NUMBER FUCKS IT 
-temp <- erms_raw_stats
 
-class(erms_raw_stats$train_under) = "Numeric"
-class(erms_raw_stats$train_over) = "Numeric"
-class(erms_raw_stats$test_under) = "Numeric"
-class(erms_raw_stats$test_over) = "Numeric"
-class(erms_raw_stats$dam_under) = "Numeric"
-class(erms_raw_stats$dam_over) = "Numeric"
-erms_stats <- droplevels(erms_raw_stats) %>% 
+erms_raw_stats$train_under <- as.numeric(as.character(erms_raw_stats$train_under))
+erms_raw_stats$train_over <- as.numeric(as.character(erms_raw_stats$train_over))
+erms_raw_stats$test_under <- as.numeric(as.character(erms_raw_stats$test_under))
+erms_raw_stats$test_over <- as.numeric(as.character(erms_raw_stats$test_over))
+erms_raw_stats$dam_under <- as.numeric(as.character(erms_raw_stats$dam_under))
+erms_raw_stats$dam_over <- as.numeric(as.character(erms_raw_stats$dam_over))
+
+erms_stats_all <- droplevels(erms_raw_stats) %>% 
   mutate(train_total = train_under + train_over, 
          test_total = test_under + test_over,
          dam_total = dam_under + dam_over,
          train_over_prct = train_over/train_total,
          test_over_prct = test_over/test_total,
-         dam_over_pct = dam_over/dam_total)
+         dam_over_pct = dam_over/dam_total,
+         detected = ifelse(dam_over_pct >= 0.95, 1, 0))
+
+erms_stats_detected <- erms_stats_all %>% 
+  select(data, dam_over_pct, detected)
+
+erms_stats <- left_join(metadata, erms_stats_detected, by = c("meta" = "data"))
+
+erms_stats <- erms_stats %>% 
+  mutate(dam_exists = ifelse(damage > 1, 1, 0 ),
+         detected_correct = ifelse(detected == dam_exists, 1, 0))
+
+erms_stats_1 <- erms_stats %>% 
+  summarize(all_found = sum(detected_correct)/n())
+
+erms_stats_2 <- erms_stats %>% 
+  group_by(damage_type, n_comp) %>% 
+  summarise(all_found = sum(detected_correct)/n())
+
+erms_stats_3 <- erms_stats %>% 
+  group_by(damage_type, noise, n_comp) %>% 
+  summarise(all_found = sum(detected_correct)/n())
+
+erms_stats_4 <- erms_stats %>% 
+  group_by(damage_type, damage, n_comp) %>% 
+  summarise(all_found = sum(detected_correct)/n())
 
 
-dff <- as.data.frame(matrix(nrow = 0, ncol = 3))
-dff <- rbind(dff, c(1,2, 3))
-dff <- rbind(dff, c(5,4,3))
+erms_comps_by_damage <- erms_stats %>% 
+  group_by(n_comp, damage) %>% 
+  summarise(all_found = sum(detected_correct)/n())
 
+erms_comps_by_type <- erms_stats %>% 
+  group_by(n_comp, damage_type) %>% 
+  summarise(all_found = sum(detected_correct)/n())
+
+erms_comps_by_noise <- erms_stats %>% 
+  group_by(n_comp, noise) %>% 
+  summarise(all_found = sum(detected_correct)/n())
+
+library("RColorBrewer")
+Sys.setlocale("LC_ALL", "latvian_Latvia.1257")
+erms_comps_by_damage %>% 
+  ggplot(aes(x = damage, y = all_found, fill = n_comp)) +
+  geom_bar(stat = "identity", position = 'dodge') +
+  scale_fill_brewer(palette="Dark2") +
+  xlab("Damage") + ylab("% noteikts") + 
+  ggtitle("Pareizi noteikts maiņas punkts % atkarībā no bojājuma")+
+  labs(fill = "Komponenšu skaits")
+
+erms_comps_by_type %>% 
+  ggplot(aes(x = damage_type, y = all_found, fill = n_comp)) +
+  geom_bar(stat = "identity", position = 'dodge') +
+  scale_fill_brewer(palette="Dark2") +
+  xlab("Damage type") + ylab("% noteikts") + 
+  ggtitle("Pareizi noteikts maiņas punkts % atkarībā no bojājuma tipa")+
+  labs(fill = "Komponenšu skaits")
+
+erms_comps_by_noise %>% 
+  ggplot(aes(x = noise, y = all_found, fill = n_comp)) +
+  geom_bar(stat = "identity", position = 'dodge') +
+  scale_fill_brewer(palette="Dark2") +
+  xlab("Noise") + ylab("% noteikts") + 
+  ggtitle("Pareizi noteikts maiņas punkts % atkarībā no trokšņa veida")+
+  labs(fill = "Komponenšu skaits")
+
+erms_damage_by_comps <- erms_stats %>% 
+  group_by(n_comp, damage) %>% 
+  summarise(all_found = sum(detected_correct)/n())
+
+erms_damage_by_type <- erms_stats %>% 
+  group_by(damage_type, damage) %>% 
+  summarise(all_found = sum(detected_correct)/n())
+
+erms_damage_by_noise <- erms_stats %>% 
+  group_by(damage, noise) %>% 
+  summarise(all_found = sum(detected_correct)/n())
+
+erms_damage_by_comps %>%  ggplot(aes(x = n_comp, y = all_found, fill = damage)) +
+  geom_bar(stat = "identity", position = 'dodge') +
+  scale_fill_brewer(palette="Dark2") +
+  xlab("Komponenšu skaits") + ylab("% noteikts") + 
+  ggtitle("Pareizi noteikts maiņas punkts % atkarībā no komponenšu skaita")+
+  labs(fill = "Bojājuma tips")
+
+erms_damage_by_type %>% ggplot(aes(x = damage_type, y = all_found, fill = damage)) +
+  geom_bar(stat = "identity", position = 'dodge') +
+  scale_fill_brewer(palette="Dark2") +
+  xlab("Bojājuma tips") + ylab("% noteikts") + 
+  ggtitle("Pareizi noteikts maiņas punkts % atkarībā no bojājuma tipa")+
+  labs(fill = "Bojājuma tips")
+
+erms_damage_by_noise %>% ggplot(aes(x = noise, y = all_found, fill = damage)) +
+  geom_bar(stat = "identity", position = 'dodge') +
+  scale_fill_brewer(palette="Dark2") +
+  xlab("Trokšņa tips") + ylab("% noteikts") + 
+  ggtitle("Pareizi noteikts maiņas punkts % atkarībā no trokšņa tipa")+
+  labs(fill = "Bojājuma tips")
+
+erms_type_by_comps <- erms_stats %>% 
+  group_by(damage_type, n_comp) %>% 
+  summarise(all_found = sum(detected_correct)/n())
+
+erms_type_by_damage <- erms_stats %>% 
+  group_by(damage_type, damage) %>% 
+  summarise(all_found = sum(detected_correct)/n())
+
+erms_type_by_noise <- erms_stats %>% 
+  group_by(damage_type, noise) %>% 
+  summarise(all_found = sum(detected_correct)/n())
+
+erms_type_by_comps %>%  ggplot(aes(x = n_comp, y = all_found, fill = damage_type)) +
+  geom_bar(stat = "identity", position = 'dodge') +
+  scale_fill_brewer(palette="Dark2") +
+  xlab("Komponenšu skaits") + ylab("% noteikts") + 
+  ggtitle("Pareizi noteikts maiņas punkts % pēc komponenšu skaita")+
+  labs(fill = "Bojājuma veids")
+
+erms_type_by_damage %>%  ggplot(aes(x = damage, y = all_found, fill = damage_type)) +
+  geom_bar(stat = "identity", position = 'dodge') +
+  scale_fill_brewer(palette="Dark2") +
+  xlab("Bojājuma tips") + ylab("% noteikts") + 
+  ggtitle("Pareizi noteikts maiņas punkts % pēc Bojājuma tipa")+
+  labs(fill = "Bojājuma veids")
+
+erms_type_by_noise %>%  ggplot(aes(x = noise, y = all_found, fill = damage_type)) +
+  geom_bar(stat = "identity", position = 'dodge') +
+  scale_fill_brewer(palette="Dark2") +
+  xlab("Trokšņa tips") + ylab("% noteikts") + 
+  ggtitle("Pareizi noteikts maiņas punkts % pēc Trokšņa tipa")+
+  labs(fill = "Bojājuma veids")
+
+erms_noise_by_comps <- erms_stats %>% 
+  group_by(noise, n_comp) %>% 
+  summarise(all_found = sum(detected_correct)/n())
+
+erms_noise_by_damage <- erms_stats %>% 
+  group_by(noise, damage) %>% 
+  summarise(all_found = sum(detected_correct)/n())
+
+erms_noise_by_type <- erms_stats %>% 
+  group_by(noise, damage_type) %>% 
+  summarise(all_found = sum(detected_correct)/n())
+
+erms_noise_by_comps %>% ggplot(aes(x = n_comp, y = all_found*100, fill = noise)) +
+  geom_bar(stat = "identity", position = 'dodge') +
+  scale_fill_brewer(palette="Dark2") +
+  xlab("Komponenšu skaits") + ylab("% noteikts") + 
+  ggtitle("Pareizi noteikts maiņas punkts % pēc Trokšņa tipa")+
+  labs(fill = "Trokšņa tips") +
+  geom_text(aes(label = 100*round(all_found,4)))
+
+erms_noise_by_damage %>% ggplot(aes(x = damage, y = all_found*100, fill = noise)) +
+  geom_bar(stat = "identity", position = 'dodge') +
+  scale_fill_brewer(palette="Dark2") +
+  xlab("Bojājuma tips") + ylab("% noteikts") + 
+  ggtitle("Pareizi noteikts maiņas punkts % pēc Trokšņa tipa")+
+  labs(fill = "Trokšņa tips") +
+  geom_text(aes(label = 100*round(all_found,4)))
+
+erms_noise_by_type %>% ggplot(aes(x = damage_type, y = all_found*100, fill = noise)) +
+  geom_bar(stat = "identity", position = 'dodge') +
+  scale_fill_brewer(palette="Dark2") +
+  xlab("Bojājuma veids") + ylab("% noteikts") + 
+  ggtitle("Pareizi noteikts maiņas punkts % pēc Trokšņa tipa")+
+  labs(fill = "Trokšņa tips") +
+  geom_text(aes(label = 100*round(all_found,4)))
