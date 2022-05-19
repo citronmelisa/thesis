@@ -200,7 +200,8 @@ get_ts_with_noise <- function(ts_df, noise_level){
 # temp2 <- (get_ts_with_noise(temp, 0.01))
 
 noise_sd_level <- c(0, 10^-4, 10^-3, 10^-2, 10^-1)
-prc_damage_coef <- c(0.001, 0.005, 0.01, 0.02, 0.03, 0.05)
+prc_damage_coef <- c(0, 0.001, 0.005, 0.01, 0.02, 0.05)
+
 
 data_mean <- c(
   mean(freq_no_na$f1),
@@ -434,12 +435,12 @@ treshold_data_start <- nrow(f_train) + 1
 treshold_data_end <- treshold_data_start  + (nrow(f_all) - 4200)
 #data_for_threshold <- all_erms_df[treshold_data_start:treshold_data_end, ]
 
-data_for_threshold <- all_erms_df[1:3000,]#[treshold_data_start:treshold_data_end, ]
+data_for_threshold <- all_erms_df[treshold_data_start:treshold_data_end, ] #all_erms_df[1:3000,]
 
 get_tresholds <- function(treshold_data_df){
   ans <- as.data.frame(matrix(nrow = 1, ncol = 0))
   for (col in 1:ncol(treshold_data_df)){
-    sd <- 3 * stats::mad(treshold_data_df[[col]])
+    sd <- 3 * sd(treshold_data_df[[col]])
     mean <- mean(treshold_data_df[[col]])
     tres <- sd + mean
     ans <- cbind(ans, tres)
@@ -503,61 +504,146 @@ for (erms in 1:length(all_erms_df)){
 
 
 # graphic playground ----
-# Damage 1-6 on frequency f1 point 4200 linear
-ts.plot(all_damage_noise_ts[1])
-abline(v=4200)
-ts.plot(all_damage_noise_ts[7])
-abline(v=4200)
-ts.plot(all_damage_noise_ts[13])
-abline(v=4200)
-ts.plot(all_damage_noise_ts[19])
-abline(v=4200)
-ts.plot(all_damage_noise_ts[25])
-abline(v=4200)
-ts.plot(all_damage_noise_ts[31])
-abline(v=4200)
+# # Damage 1-6 on frequency f1 point 4200 linear
+# ts.plot(all_damage_noise_ts[1])
+# abline(v=4200)
+# ts.plot(all_damage_noise_ts[7])
+# abline(v=4200)
+# ts.plot(all_damage_noise_ts[13])
+# abline(v=4200)
+# ts.plot(all_damage_noise_ts[19])
+# abline(v=4200)
+# ts.plot(all_damage_noise_ts[25])
+# abline(v=4200)
+# ts.plot(all_damage_noise_ts[31])
+# abline(v=4200)
+# 
+# # Damage 1-6 on frequency f1 point 4200 cubic
+# ts.plot(all_damage_noise_ts$`f 1 _dam_ 1 _cubic _noise_ 1`)
+# abline(v=4200)
+# ts.plot(all_damage_noise_ts$`f 1 _dam_ 2 _cubic _noise_ 1`)
+# abline(v=4200)
+# ts.plot(all_damage_noise_ts$`f 1 _dam_ 3 _cubic _noise_ 1`)
+# abline(v=4200)
+# ts.plot(all_damage_noise_ts$`f 1 _dam_ 4 _cubic _noise_ 1`)
+# abline(v=4200)
+# ts.plot(all_damage_noise_ts$`f 1 _dam_ 5 _cubic _noise_ 1`)
+# abline(v=4200)
+# ts.plot(all_damage_noise_ts$`f 1 _dam_ 6 _cubic _noise_ 1`)
+# abline(v=4200)
+# 
+# 
+# 
+# str(all_erms_test)
+# all_erms_test <- cbind(all_erms_df, time = c(1:nrow(all_erms_df)))
+# temp <- cbind(all_erms_test[,1:4], time =c(1:nrow(all_erms_df)))
+# df_melt = melt(temp, id.vars = 'time')
+# 
+# 
+# ggplot(df_melt, aes(x = time, y = value)) + 
+#   geom_line() + 
+#   facet_wrap(~ variable, scales = 'free_y', ncol = 1) +
+#   geom_hline(yintercept = 0.1)
+# 
+# 
+# all_damage_noise_test <- all_damage_noise_ts [,7:12]
+# all_damage_noise_test <- cbind(all_damage_noise_test, time =c(1:nrow(all_damage_noise_test)))
+# df_melt = melt(all_damage_noise_test, id.vars = 'time')
+# ggplot(df_melt, aes(x = time, y = value)) + 
+#   geom_line() + 
+#   facet_wrap(~ variable, nrow = 3, scales = "free_y") +
+#   geom_hline(yintercept = c(0.1))
+# 
+# dput(df_melt)
+# 
+# df_1 <- all_damage_noise_test[1:7,]
+# df_2 <- df_melt[1:7,]                               
+# dput(df_1)
+# 
+# str(df_1)
+# str(df_2)
 
-# Damage 1-6 on frequency f1 point 4200 cubic
-ts.plot(all_damage_noise_ts$`f 1 _dam_ 1 _cubic _noise_ 1`)
-abline(v=4200)
-ts.plot(all_damage_noise_ts$`f 1 _dam_ 2 _cubic _noise_ 1`)
-abline(v=4200)
-ts.plot(all_damage_noise_ts$`f 1 _dam_ 3 _cubic _noise_ 1`)
-abline(v=4200)
-ts.plot(all_damage_noise_ts$`f 1 _dam_ 4 _cubic _noise_ 1`)
-abline(v=4200)
-ts.plot(all_damage_noise_ts$`f 1 _dam_ 5 _cubic _noise_ 1`)
-abline(v=4200)
-ts.plot(all_damage_noise_ts$`f 1 _dam_ 6 _cubic _noise_ 1`)
-abline(v=4200)
+
+# split erms ----
+
+split_erms_results <- function(all_erms_df, tresholds, train_end, test_end) {
+  names <- c()
+  ans <- matrix(nrow = 0, ncol = 7)
+  
+  for (col in 1:ncol(all_erms_df)){
+  
+  name <- names(all_erms_df[col])
+  train <-  all_erms_df[1:train_end, col]
+  test <- all_erms_df[(train_end+1):test_end, col]
+  remaining <- all_erms_df[(test_end+1):nrow(all_erms_df), col]
+  treshold <- tresholds[col]
+  
+  under <- 0
+  over <- 0
+  
+    for (val in train) {
+      if (val < treshold) {
+        under <- under + 1
+      } else {
+        over <- over + 1
+      }
+    }
+  train_under <- under
+  train_over <- over
+  
+  under <- 0
+  over <- 0
+  for (val in test) {
+    if (val < treshold) {
+      under <- under + 1
+    } else {
+      over <- over + 1
+    }
+  }
+  test_under <- under
+  test_over <- over
+
+  under <- 0
+  over <- 0
+  for (val in remaining) {
+    if (val < treshold) {
+      under <- under + 1
+    } else {
+      over <- over + 1
+    }
+  }
+  remaining_under <- under
+  remaining_over <- over
+  
+  temp_ans <- c(name, train_under, train_over, test_under, test_over, remaining_under, remaining_over)
+  ans <- rbind(ans, temp_ans)
+
+  } 
+  ans <- as.data.frame(ans)
+  colnames(ans) <- c("data", "train_under", "train_over", "test_under", "test_over", "dam_under", "dam_over")
+  return(as.data.frame(ans))
+}
+
+erms_raw_stats <- split_erms_results(all_erms_df, tresholds, floor(0.7*nrow(all_erms_df)), 4200)
+## TRANSPOSING TO NUMBER FUCKS IT 
+temp <- erms_raw_stats
+
+class(erms_raw_stats$train_under) = "Numeric"
+class(erms_raw_stats$train_over) = "Numeric"
+class(erms_raw_stats$test_under) = "Numeric"
+class(erms_raw_stats$test_over) = "Numeric"
+class(erms_raw_stats$dam_under) = "Numeric"
+class(erms_raw_stats$dam_over) = "Numeric"
+erms_stats <- droplevels(erms_raw_stats) %>% 
+  mutate(train_total = train_under + train_over, 
+         test_total = test_under + test_over,
+         dam_total = dam_under + dam_over,
+         train_over_prct = train_over/train_total,
+         test_over_prct = test_over/test_total,
+         dam_over_pct = dam_over/dam_total)
 
 
+dff <- as.data.frame(matrix(nrow = 0, ncol = 3))
+dff <- rbind(dff, c(1,2, 3))
+dff <- rbind(dff, c(5,4,3))
 
-str(all_erms_test)
-all_erms_test <- cbind(all_erms_df, time = c(1:nrow(all_erms_df)))
-temp <- cbind(all_erms_test[,1:4], time =c(1:nrow(all_erms_df)))
-df_melt = melt(temp, id.vars = 'time')
-
-
-ggplot(df_melt, aes(x = time, y = value)) + 
-  geom_line() + 
-  facet_wrap(~ variable, scales = 'free_y', ncol = 1) +
-  geom_hline(yintercept = 0.1)
-
-
-all_damage_noise_test <- all_damage_noise_ts [,7:12]
-all_damage_noise_test <- cbind(all_damage_noise_test, time =c(1:nrow(all_damage_noise_test)))
-df_melt = melt(all_damage_noise_test, id.vars = 'time')
-ggplot(df_melt, aes(x = time, y = value)) + 
-  geom_line() + 
-  facet_wrap(~ variable, nrow = 3, scales = "free_y") +
-  geom_hline(yintercept = c(0.1))
-
-dput(df_melt)
-
-df_1 <- all_damage_noise_test[1:7,]
-df_2 <- df_melt[1:7,]                               
-dput(df_1)
-
-str(df_1)
-str(df_2)
