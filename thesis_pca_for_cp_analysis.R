@@ -132,6 +132,14 @@ add_damage <- function(ts, damage_coef, damage_type, offset) {
   }
 }
 
+test_ts <- rep(0, 4683)
+par(mfrow=c(1,1))
+ts.plot(add_damage(test_ts, 0.1* mean(freq_no_na$f1), 'linear', 4200),
+        xlab = 'laiks', ylab = 'frekvence, Hz')
+test_ts2 <- add_damage(test_ts, 0.05* mean(freq_no_na$f3), 'cubic', 4200)
+ts.plot(test_ts2)
+test_ts3 <- add_noise(test_ts2, 0.1, offset = 4200)
+ts.plot(test_ts3, xlab = 'laiks', ylab = 'frekvence, Hz')
 
 get_ts_with_damage <-
   function(damage_type, damage_coef, ts_df, offset = 4200) {
@@ -671,40 +679,65 @@ erms_stats_4 <- erms_stats %>%
 erms_comps_by_damage <- erms_stats %>% 
   group_by(n_comp, damage) %>% 
   summarise(all_found = sum(detected_correct)/n())
+erms_comps_by_damage$damage[erms_comps_by_damage$damage == 1] <- "0%"
+erms_comps_by_damage$damage[erms_comps_by_damage$damage == 2] <- "0.1%"
+erms_comps_by_damage$damage[erms_comps_by_damage$damage == 3] <- "0.5%"
+erms_comps_by_damage$damage[erms_comps_by_damage$damage == 4] <- "1%"
+erms_comps_by_damage$damage[erms_comps_by_damage$damage == 5] <- "2%"
+erms_comps_by_damage$damage[erms_comps_by_damage$damage == 6] <- "5%"
+
 
 erms_comps_by_type <- erms_stats %>% 
   group_by(n_comp, damage_type) %>% 
   summarise(all_found = sum(detected_correct)/n())
+erms_comps_by_type$damage_type[erms_comps_by_type$damage_type == 'linear'] <- 'bojājuma leciens'
+erms_comps_by_type$damage_type[erms_comps_by_type$damage_type == 'cubic'] <- 'kubsaknes veida bojājums'
 
 erms_comps_by_noise <- erms_stats %>% 
   group_by(n_comp, noise) %>% 
   summarise(all_found = sum(detected_correct)/n())
+erms_comps_by_noise$noise[erms_comps_by_noise$noise == 1] <- 0
+erms_comps_by_noise$noise[erms_comps_by_noise$noise == 2] <- 0.1
+erms_comps_by_noise$noise[erms_comps_by_noise$noise == 3] <- 0.01
+erms_comps_by_noise$noise[erms_comps_by_noise$noise == 4] <- 0.001
+erms_comps_by_noise$noise[erms_comps_by_noise$noise == 5] <- 0.0001
 
 library("RColorBrewer")
+library("wesanderson")
+
 Sys.setlocale("LC_ALL", "latvian_Latvia.1257")
 erms_comps_by_damage %>% 
-  ggplot(aes(x = damage, y = all_found, fill = n_comp)) +
+  ggplot(aes(x = damage, y = all_found*100, fill = n_comp)) +
   geom_bar(stat = "identity", position = 'dodge') +
-  scale_fill_brewer(palette="Dark2") +
-  xlab("Damage") + ylab("% noteikts") + 
-  ggtitle("Pareizi noteikts maiņas punkts % atkarībā no bojājuma")+
-  labs(fill = "Komponenšu skaits")
+  scale_fill_manual(values = wes_palette("BottleRocket1")) +
+  xlab("Bojājuma lielums kā % no vidējās vērtības") + ylab("% gadījumu, kas noteikti") + 
+  ggtitle("Pareizi noteikts maiņas punkts % atkarībā no bojājuma pēc komponenšu skaita")+
+  labs(fill = "Komponenšu skaits") +
+  theme_bw() +
+  geom_text(aes(label = 100*round(all_found,4))) +
+  annotate("text", x = 4, y = 100, label = "n = 240")
 
 erms_comps_by_type %>% 
-  ggplot(aes(x = damage_type, y = all_found, fill = n_comp)) +
+  ggplot(aes(x = damage_type, y = all_found*100, fill = n_comp)) +
   geom_bar(stat = "identity", position = 'dodge') +
-  scale_fill_brewer(palette="Dark2") +
-  xlab("Damage type") + ylab("% noteikts") + 
-  ggtitle("Pareizi noteikts maiņas punkts % atkarībā no bojājuma tipa")+
-  labs(fill = "Komponenšu skaits")
+  scale_fill_manual(values = wes_palette("BottleRocket1")) +
+  xlab("Bojājuma veids") + ylab("% gadījumu, kas noteikti") + 
+  ggtitle("Pareizi noteikts maiņas punkts % atkarībā no bojājuma veida")+
+  labs(fill = "Komponenšu skaits") +
+  theme_bw() +
+  geom_text(aes(label = 100*round(all_found,4))) +
+  annotate("text", x = 2, y = 100, label = "n = 240")
 
 erms_comps_by_noise %>% 
-  ggplot(aes(x = noise, y = all_found, fill = n_comp)) +
+  ggplot(aes(x = noise, y = all_found*100, fill = n_comp)) +
   geom_bar(stat = "identity", position = 'dodge') +
-  scale_fill_brewer(palette="Dark2") +
-  xlab("Noise") + ylab("% noteikts") + 
-  ggtitle("Pareizi noteikts maiņas punkts % atkarībā no trokšņa veida")+
-  labs(fill = "Komponenšu skaits")
+  scale_fill_manual(values = wes_palette("BottleRocket1")) +
+  xlab("Trokšņa amplitūda") + ylab("% gadījumu, kas noteikti") + 
+  ggtitle("Pareizi noteikts maiņas punkts % atkarībā no bojājuma trokšņa amplitūdas")+
+  labs(fill = "Komponenšu skaits")+
+  theme_bw() +
+  geom_text(aes(label = 100*round(all_found,4))) +
+  annotate("text", x = 2, y = 100, label = "n = 240")
 
 erms_damage_by_comps <- erms_stats %>% 
   group_by(n_comp, damage) %>% 
@@ -718,26 +751,29 @@ erms_damage_by_noise <- erms_stats %>%
   group_by(damage, noise) %>% 
   summarise(all_found = sum(detected_correct)/n())
 
-erms_damage_by_comps %>%  ggplot(aes(x = n_comp, y = all_found, fill = damage)) +
+erms_damage_by_comps %>%  ggplot(aes(x = n_comp, y = all_found*100, fill = damage)) +
   geom_bar(stat = "identity", position = 'dodge') +
-  scale_fill_brewer(palette="Dark2") +
+  scale_fill_manual(values = wes_palette("BottleRocket1")) +
   xlab("Komponenšu skaits") + ylab("% noteikts") + 
   ggtitle("Pareizi noteikts maiņas punkts % atkarībā no komponenšu skaita")+
-  labs(fill = "Bojājuma tips")
+  labs(fill = "Bojājuma tips")+
+  theme_bw()
 
 erms_damage_by_type %>% ggplot(aes(x = damage_type, y = all_found, fill = damage)) +
   geom_bar(stat = "identity", position = 'dodge') +
   scale_fill_brewer(palette="Dark2") +
   xlab("Bojājuma tips") + ylab("% noteikts") + 
   ggtitle("Pareizi noteikts maiņas punkts % atkarībā no bojājuma tipa")+
-  labs(fill = "Bojājuma tips")
+  labs(fill = "Bojājuma tips")+
+  theme_bw()
 
 erms_damage_by_noise %>% ggplot(aes(x = noise, y = all_found, fill = damage)) +
   geom_bar(stat = "identity", position = 'dodge') +
   scale_fill_brewer(palette="Dark2") +
   xlab("Trokšņa tips") + ylab("% noteikts") + 
   ggtitle("Pareizi noteikts maiņas punkts % atkarībā no trokšņa tipa")+
-  labs(fill = "Bojājuma tips")
+  labs(fill = "Bojājuma tips")+
+  theme_bw()
 
 erms_type_by_comps <- erms_stats %>% 
   group_by(damage_type, n_comp) %>% 
@@ -756,21 +792,24 @@ erms_type_by_comps %>%  ggplot(aes(x = n_comp, y = all_found, fill = damage_type
   scale_fill_brewer(palette="Dark2") +
   xlab("Komponenšu skaits") + ylab("% noteikts") + 
   ggtitle("Pareizi noteikts maiņas punkts % pēc komponenšu skaita")+
-  labs(fill = "Bojājuma veids")
+  labs(fill = "Bojājuma veids")+
+  theme_bw()
 
 erms_type_by_damage %>%  ggplot(aes(x = damage, y = all_found, fill = damage_type)) +
   geom_bar(stat = "identity", position = 'dodge') +
   scale_fill_brewer(palette="Dark2") +
   xlab("Bojājuma tips") + ylab("% noteikts") + 
   ggtitle("Pareizi noteikts maiņas punkts % pēc Bojājuma tipa")+
-  labs(fill = "Bojājuma veids")
+  labs(fill = "Bojājuma veids")+
+  theme_bw()
 
 erms_type_by_noise %>%  ggplot(aes(x = noise, y = all_found, fill = damage_type)) +
   geom_bar(stat = "identity", position = 'dodge') +
   scale_fill_brewer(palette="Dark2") +
   xlab("Trokšņa tips") + ylab("% noteikts") + 
   ggtitle("Pareizi noteikts maiņas punkts % pēc Trokšņa tipa")+
-  labs(fill = "Bojājuma veids")
+  labs(fill = "Bojājuma veids")+
+  theme_bw()
 
 erms_noise_by_comps <- erms_stats %>% 
   group_by(noise, n_comp) %>% 
@@ -807,3 +846,195 @@ erms_noise_by_type %>% ggplot(aes(x = damage_type, y = all_found*100, fill = noi
   ggtitle("Pareizi noteikts maiņas punkts % pēc Trokšņa tipa")+
   labs(fill = "Trokšņa tips") +
   geom_text(aes(label = 100*round(all_found,4)))
+
+erms_5comp_stats <- erms_stats %>% 
+  filter(n_comp == 5)  
+
+erms_5comps_dam1 <- erms_5comp_stats %>% 
+  filter(damage == 1) %>% 
+  group_by(damage_type, noise) %>% 
+  summarise(all_found = sum(detected_correct)/n())
+erms_5comps_dam1$noise[erms_5comps_dam1$noise==1] <- 0
+erms_5comps_dam1$noise[erms_5comps_dam1$noise==2] <- 10^-4
+erms_5comps_dam1$noise[erms_5comps_dam1$noise==3] <- 10^-3
+erms_5comps_dam1$noise[erms_5comps_dam1$noise==4] <- 10^-2
+erms_5comps_dam1$noise[erms_5comps_dam1$noise==5] <- 10^-1
+erms_5comps_dam1$damage_type[erms_5comps_dam1$damage_type=='linear'] <- 'bojājuma leciens'
+erms_5comps_dam1$damage_type[erms_5comps_dam1$damage_type=='cubic'] <- 'kubsaknes veida bojājums'
+
+
+erms_5comps_dam2 <- erms_5comp_stats %>% 
+  filter(damage == 2) %>% 
+  group_by(damage_type, noise) %>% 
+  summarise(all_found = sum(detected_correct)/n())
+erms_5comps_dam2$noise[erms_5comps_dam2$noise==1] <- 0
+erms_5comps_dam2$noise[erms_5comps_dam2$noise==2] <- 10^-4
+erms_5comps_dam2$noise[erms_5comps_dam2$noise==3] <- 10^-3
+erms_5comps_dam2$noise[erms_5comps_dam2$noise==4] <- 10^-2
+erms_5comps_dam2$noise[erms_5comps_dam2$noise==5] <- 10^-1
+erms_5comps_dam2$damage_type[erms_5comps_dam2$damage_type=='linear'] <- 'bojājuma leciens'
+erms_5comps_dam2$damage_type[erms_5comps_dam2$damage_type=='cubic'] <- 'kubsaknes veida bojājums'
+
+
+erms_5comps_dam3<- erms_5comp_stats %>% 
+  filter(damage == 3)%>% 
+  group_by(damage_type, noise) %>% 
+  summarise(all_found = sum(detected_correct)/n())
+erms_5comps_dam3$noise[erms_5comps_dam3$noise==1] <- 0
+erms_5comps_dam3$noise[erms_5comps_dam3$noise==2] <- 10^-4
+erms_5comps_dam3$noise[erms_5comps_dam3$noise==3] <- 10^-3
+erms_5comps_dam3$noise[erms_5comps_dam3$noise==4] <- 10^-2
+erms_5comps_dam3$noise[erms_5comps_dam3$noise==5] <- 10^-1
+erms_5comps_dam3$damage_type[erms_5comps_dam3$damage_type=='linear'] <- 'bojājuma leciens'
+erms_5comps_dam3$damage_type[erms_5comps_dam3$damage_type=='cubic'] <- 'kubsaknes veida bojājums'
+
+
+erms_5comps_dam4<- erms_5comp_stats %>% 
+  filter(damage == 4)%>% 
+  group_by(damage_type, noise) %>% 
+  summarise(all_found = sum(detected_correct)/n())
+erms_5comps_dam4$noise[erms_5comps_dam4$noise==1] <- 0
+erms_5comps_dam4$noise[erms_5comps_dam4$noise==2] <- 10^-4
+erms_5comps_dam4$noise[erms_5comps_dam4$noise==3] <- 10^-3
+erms_5comps_dam4$noise[erms_5comps_dam4$noise==4] <- 10^-2
+erms_5comps_dam4$noise[erms_5comps_dam4$noise==5] <- 10^-1
+erms_5comps_dam4$damage_type[erms_5comps_dam4$damage_type=='linear'] <- 'bojājuma leciens'
+erms_5comps_dam4$damage_type[erms_5comps_dam4$damage_type=='cubic'] <- 'kubsaknes veida bojājums'
+
+
+erms_5comps_dam5<- erms_5comp_stats %>% 
+  filter(damage == 5)%>% 
+  group_by(damage_type, noise) %>% 
+  summarise(all_found = sum(detected_correct)/n())
+erms_5comps_dam5$noise[erms_5comps_dam5$noise==1] <- 0
+erms_5comps_dam5$noise[erms_5comps_dam5$noise==2] <- 10^-4
+erms_5comps_dam5$noise[erms_5comps_dam5$noise==3] <- 10^-3
+erms_5comps_dam5$noise[erms_5comps_dam5$noise==4] <- 10^-2
+erms_5comps_dam5$noise[erms_5comps_dam5$noise==5] <- 10^-1
+erms_5comps_dam5$damage_type[erms_5comps_dam5$damage_type=='linear'] <- 'bojājuma leciens'
+erms_5comps_dam5$damage_type[erms_5comps_dam5$damage_type=='cubic'] <- 'kubsaknes veida bojājums'
+
+
+erms_5comps_dam6<- erms_5comp_stats %>% 
+  filter(damage == 6)%>% 
+  group_by(damage_type, noise) %>% 
+  summarise(all_found = sum(detected_correct)/n())
+erms_5comps_dam6$noise[erms_5comps_dam6$noise==1] <- 0
+erms_5comps_dam6$noise[erms_5comps_dam6$noise==2] <- 10^-4
+erms_5comps_dam6$noise[erms_5comps_dam6$noise==3] <- 10^-3
+erms_5comps_dam6$noise[erms_5comps_dam6$noise==4] <- 10^-2
+erms_5comps_dam6$noise[erms_5comps_dam6$noise==5] <- 10^-1
+erms_5comps_dam6$damage_type[erms_5comps_dam6$damage_type=='linear'] <- 'bojājuma leciens'
+erms_5comps_dam6$damage_type[erms_5comps_dam6$damage_type=='cubic'] <- 'kubsaknes veida bojājums'
+
+par(mfrow = c(2, 2))
+
+erms_5comps_dam1 %>% ggplot(aes(x = factor(noise, level = level_order), y = all_found*100, fill = damage_type))+
+  geom_bar(stat = "identity", position = "dodge") +
+  scale_fill_manual(values = wes_palette("BottleRocket1")) +
+  xlab("Trokšņa amplitūda") + ylab("% gadījumu, kas noteikti") + 
+  ggtitle("Pareizi noteikts maiņas punkts % pēc trokšņa amplitūdas (Bojājums = 0%) ")+
+  labs(fill = "Bojājuma veids") +
+  theme_bw()
+
+erms_5comps_dam2 %>% ggplot(aes(x = factor(noise, level = level_order), y = all_found*100, fill = damage_type)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  scale_fill_manual(values = wes_palette("BottleRocket1")) +
+  xlab("Trokšņa amplitūda") + ylab("% gadījumu, kas noteikti") + 
+  ggtitle("Pareizi noteikts maiņas punkts % pēc trokšņa amplitūdas (Bojājums = 0.1%) ")+
+  labs(fill = "Bojājuma veids") +
+  theme_bw()
+
+erms_5comps_dam3 %>%  ggplot(aes(x = factor(noise, level = level_order), y = all_found*100, fill = damage_type)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  scale_fill_manual(values = wes_palette("BottleRocket1")) +
+  xlab("Trokšņa amplitūda") + ylab("% gadījumu, kas noteikti") + 
+  ggtitle("Pareizi noteikts maiņas punkts % pēc trokšņa amplitūdas (Bojājums = 0.5%) ")+
+  labs(fill = "Bojājuma veids") +
+  theme_bw()
+
+erms_5comps_dam4 %>%  ggplot(aes(x = factor(noise, level = level_order), y = all_found*100, fill = damage_type)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  scale_fill_manual(values = wes_palette("BottleRocket1")) +
+  xlab("Trokšņa amplitūda") + ylab("% gadījumu, kas noteikti") + 
+  ggtitle("Pareizi noteikts maiņas punkts % pēc trokšņa amplitūdas (Bojājums = 1%) ")+
+  labs(fill = "Bojājuma veids") +
+  theme_bw()
+
+erms_5comps_dam5 %>%  ggplot(aes(x = factor(noise, level = level_order), y = all_found*100, fill = damage_type)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  scale_fill_manual(values = wes_palette("BottleRocket1")) +
+  xlab("Trokšņa amplitūda") + ylab("% gadījumu, kas noteikti") + 
+  ggtitle("Pareizi noteikts maiņas punkts % pēc trokšņa amplitūdas (Bojājums = 2%) ")+
+  labs(fill = "Bojājuma veids") +
+  theme_bw()
+
+erms_5comps_dam6 %>%  ggplot(aes(x = factor(noise, level = level_order), y = all_found*100, fill = damage_type)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  scale_fill_manual(values = wes_palette("BottleRocket1")) +
+  xlab("Trokšņa amplitūda") + ylab("% gadījumu, kas noteikti") + 
+  ggtitle("Pareizi noteikts maiņas punkts % pēc trokšņa amplitūdas (Bojājums = 5%) ")+
+  labs(fill = "Bojājuma veids") +
+  theme_bw()
+
+# ---- sample all data with damage 
+
+
+Sys.setlocale("LC_ALL", "latvian_Latvia.1257")
+
+dam1noise2lin <- data_list[[13]]
+freq_dam1noise2lin <- dam1noise2lin %>% 
+  mutate(t = 1:nrow(dam1noise2lin)) 
+
+par(mfrow = c(2, 1))
+plot(freq_dam1noise2lin$t, freq_dam1noise2lin[,1], col = "red2",  ylim = c(3.2,5.8), pch = 20,
+     ylab = "Frekvence, HZ",xlab = "laiks",
+     main = "Frekvenču dati (F1-F3), bez bojājuma")
+points(freq_dam1noise2lin$t, freq_dam1noise2lin[,2],col = "indianred", pch = 20)
+points(freq_dam1noise2lin$t, freq_dam1noise2lin[,3],col = "darkorange1", pch = 20)
+abline(v = 4200, lwd = 2, lty = 'dashed')
+legend('top',legend = c("F1", "F2", "F3"), col = c("red2","indianred", "darkorange1"),
+        lwd = 5, xpd = TRUE, horiz = TRUE, cex = 1, seg.len = 1, bty = 'n')
+#text("t=4200, vidējās vērtības izmaiņas nav")
+
+
+dam5noise1lin <- data_list[[5]]
+freq_dam5noise1lin <- dam5noise1lin %>% 
+  mutate(t = 1:nrow(dam1noise2lin)) 
+
+plot(freq_dam5noise1lin$t, freq_dam5noise1lin[,1], col = "red2",  ylim = c(3.2,5.8), pch = 20,
+     ylab = "Frekvence, HZ",xlab = "laiks", main = "Frekvenču dati (F1-F3), f1 un f3 2% leciena bojājums pie t=4200")
+points(freq_dam5noise1lin$t, freq_dam5noise1lin[,2],col = "indianred", pch = 20)
+points(freq_dam5noise1lin$t, freq_dam5noise1lin[,3],col = "darkorange1", pch = 20)
+abline(v = 4200, lwd = 2, lty = 'dashed')
+legend('top',legend = c("F1", "F2", "F3"), col = c("red2","indianred", "darkorange1"),
+       lwd = 5, xpd = TRUE, horiz = TRUE, cex = 1, seg.len = 1, bty = 'n')
+#text("t=4200, vidējās vērtības izmaiņa f1 un f3: 2%, bojājuma leciens")
+
+dam2noise2cub <- data_list[[20]]
+freq_dam2noise2cub <- dam2noise2cub %>% 
+  mutate(t = 1:nrow(dam1noise2lin)) 
+
+plot(freq_dam2noise2cub$t, freq_dam2noise2cub[,1], col = "red2",  ylim = c(3.2,5.8), pch = 20,
+     ylab = "Frekvence, HZ",xlab = "laiks", 
+     main = "Frekvenču dati (F1-F3), f1 un f3 0.1% kubsaknes bojājums pie t=4200")
+points(freq_dam2noise2cub$t, freq_dam2noise2cub[,2],col = "indianred", pch = 20)
+points(freq_dam2noise2cub$t, freq_dam2noise2cub[,3],col = "darkorange1", pch = 20)
+abline(v = 4200, lwd = 2, lty = 'dashed')
+legend('top',legend = c("F1", "F2", "F3"), col = c("red2","indianred", "darkorange1"),
+       lwd = 5, xpd = TRUE, horiz = TRUE, cex = 1, seg.len = 1, bty = 'n')
+
+dam5noise2cub <- data_list[[22]]
+freq_dam5noise2cub <- dam5noise2cub %>% 
+  mutate(t = 1:nrow(dam1noise2lin))
+
+plot(freq_dam5noise2cub$t, freq_dam5noise2cub[,1], col = "red2",  ylim = c(3.2,5.8), pch = 20,
+     ylab = "Frekvence, HZ",xlab = "laiks", 
+     main = "Frekvenču dati (F1-F3), f1 un f3 1% kubsaknes bojājums pie t=4200")
+points(freq_dam5noise2cub$t, freq_dam5noise2cub[,2],col = "indianred", pch = 20)
+points(freq_dam5noise2cub$t, freq_dam5noise2cub[,3],col = "darkorange1", pch = 20)
+abline(v = 4200, lwd = 2, lty = 'dashed')
+legend('top',legend = c("F1", "F2", "F3"), col = c("red2","indianred", "darkorange1"),
+       lwd = 5, xpd = TRUE, horiz = TRUE, cex = 1, seg.len = 1, bty = 'n')
+
+
